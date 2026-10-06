@@ -1,0 +1,47 @@
+import logging
+from app.schemas.research import ResearchRequest
+from app.workflow.state import ResearchState
+from app.workflow.graph import build_research_graph
+from app.services.llm.gemini import get_llm_provider
+from app.tools.research.web_search import TavilyWebSearchTool
+from app.tools.research.academic_search import ArxivAcademicSearchTool
+from app.schemas.workflow import WorkflowStatus
+
+logger = logging.getLogger(__name__)
+
+class WorkflowExecutionError(Exception):
+    """Raised when the research workflow fails."""
+    pass
+
+async def run_research_workflow(request: ResearchRequest) -> ResearchState:
+    """
+    Entry point to execute the full LangGraph research workflow.
+    """
+    llm_provider = get_llm_provider()
+    
+    try:
+        web_tool = TavilyWebSearchTool()
+        academic_tool = ArxivAcademicSearchTool()
+    except Exception as e:
+        logger.exception("Failed to initialize research tools")
+        raise WorkflowExecutionError("Failed to initialize research tools.") from e
+
+    graph = build_research_graph(llm_provider, web_tool, academic_tool)
+
+    initial_state: ResearchState = {
+        "query": request.query,
+        "mode": request.mode,
+        "plan": None,
+        "error": None,
+        "status": WorkflowStatus.INITIALIZED,
+        "sources": [],
+        "findings": [],
+        "errors": []
+    }
+
+    try:
+        final_state = await graph.ainvoke(initial_state)
+        return final_state
+    except Exception as e:
+        logger.exception("Research workflow execution failed")
+        raise WorkflowExecutionError("Research workflow execution failed.") from e
