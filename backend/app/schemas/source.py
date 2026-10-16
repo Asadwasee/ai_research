@@ -15,3 +15,4 @@ class ResearchSource(BaseModel):
     publisher: str | None = None
     authors: list[str] = Field(default_factory=list)
     published_at: datetime | None = None
+    content: str | None = None

@@ -2,7 +2,6 @@ import pytest
 import asyncio
 from app.workflow.state import ResearchState
 from app.schemas.research import ResearchMode, ResearchPlan
-from app.schemas.workflow import WorkflowStatus
 from app.workflow.nodes.researcher import run_researcher
 from app.schemas.source import ResearchSource, SourceType
 from app.tools.research.base import ResearchTool, ResearchToolProviderError
@@ -36,27 +35,29 @@ class ErrorTool(ResearchTool):
         raise ResearchToolProviderError("Mocked failure")
 
 def get_test_state(mode: ResearchMode, plan_questions: list[str]) -> ResearchState:
-    from app.schemas.research import SubQuestion
-    sub_qs = [SubQuestion(id=str(i), question=q, purpose="test") for i, q in enumerate(plan_questions)]
-    plan = ResearchPlan(original_query="test", sub_questions=sub_qs, mode=mode.value)
+    # Proper generation of test data via actual Pydantic schema validation
+    plan_data = {
+        "original_query": "test query",
+        "sub_questions": [
+            {"id": str(i), "question": q, "purpose": "test"}
+            for i, q in enumerate(plan_questions)
+        ],
+        "mode": mode.value
+    }
+    plan = ResearchPlan.model_validate(plan_data)
     
     return {
-        "query": "test",
+        "query": "test query",
         "mode": mode,
         "plan": plan,
         "error": None,
-        "status": WorkflowStatus.IN_PROGRESS,
         "sources": [],
-        "findings": [],
         "errors": []
     }
 
 def test_researcher_standard_mode():
     state = get_test_state(ResearchMode.STANDARD, ["Q1"])
-    web_tool = MockWebTool()
-    acad_tool = MockAcademicTool()
-    
-    result = asyncio.run(run_researcher(state, web_tool, acad_tool))
+    result = asyncio.run(run_researcher(state, MockWebTool(), MockAcademicTool()))
     
     assert len(result["sources"]) == 1
     assert result["sources"][0].source_type == SourceType.WEB
@@ -64,40 +65,29 @@ def test_researcher_standard_mode():
 
 def test_researcher_deep_mode():
     state = get_test_state(ResearchMode.DEEP, ["Q1"])
-    web_tool = MockWebTool()
-    acad_tool = MockAcademicTool()
-    
-    result = asyncio.run(run_researcher(state, web_tool, acad_tool))
+    result = asyncio.run(run_researcher(state, MockWebTool(), MockAcademicTool()))
     
     assert len(result["sources"]) == 2
     assert len(result["errors"]) == 0
 
 def test_researcher_tool_failure():
     state = get_test_state(ResearchMode.STANDARD, ["Q1"])
-    web_tool = ErrorTool()
-    acad_tool = MockAcademicTool()
+    result = asyncio.run(run_researcher(state, ErrorTool(), MockAcademicTool()))
     
-    result = asyncio.run(run_researcher(state, web_tool, acad_tool))
-    
-    assert len(result["sources"]) == 0
+    assert len(result.get("sources", [])) == 0
     assert len(result["errors"]) == 1
     assert "Mocked failure" in result["errors"][0].details
 
 def test_researcher_no_plan():
     state = {
-        "query": "test",
+        "query": "test query",
         "mode": ResearchMode.STANDARD,
         "plan": None,
         "error": None,
-        "status": WorkflowStatus.IN_PROGRESS,
         "sources": [],
-        "findings": [],
         "errors": []
     }
-    web_tool = MockWebTool()
-    acad_tool = MockAcademicTool()
-    
-    result = asyncio.run(run_researcher(state, web_tool, acad_tool))
+    result = asyncio.run(run_researcher(state, MockWebTool(), MockAcademicTool()))
     
     assert len(result.get("sources", [])) == 0
     assert len(result["errors"]) == 1

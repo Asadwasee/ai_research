@@ -54,7 +54,8 @@ class TavilyWebSearchTool(ResearchTool):
                     source_type=SourceType.WEB,
                     publisher=None,
                     authors=[],
-                    published_at=published_at 
+                    published_at=published_at,
+                    content=item.get("content")  # ADDED: Preserving retrieved textual content
                 )
                 sources.append(source)
                 

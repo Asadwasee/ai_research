@@ -1,5 +1,3 @@
-# backend/tests/test_research_tools.py
-
 import asyncio
 import httpx
 import pytest
@@ -107,6 +105,7 @@ def test_tavily_success(mock_tavily_settings):
                         "title": "Test Web",
                         "url": "https://example.com",
                         "published_date": "2024-01-01T00:00:00Z",
+                        "content": "Useful web snippet.",
                     }
                 ]
             }
@@ -122,6 +121,7 @@ def test_tavily_success(mock_tavily_settings):
         assert results[0].source_type == SourceType.WEB
         assert results[0].title == "Test Web"
         assert str(results[0].url) == "https://example.com/"
+        assert results[0].content == "Useful web snippet."
 
 
 def test_tavily_malformed_results(mock_tavily_settings):
@@ -199,6 +199,7 @@ def make_arxiv_xml(
     title: str,
     published: str | None = None,
     author: str | None = None,
+    summary: str | None = None,
 ) -> str:
     """
     Build valid Atom XML without writing literal angle brackets.
@@ -217,6 +218,13 @@ def make_arxiv_xml(
         f'{lt}id{gt}{arxiv_id}{lt}/id{gt}'
         f'{lt}title{gt}{title}{lt}/title{gt}'
     )
+
+    if summary is not None:
+        xml += (
+            f'{lt}summary{gt}'
+            f'{summary}'
+            f'{lt}/summary{gt}'
+        )
 
     if published is not None:
         xml += (
@@ -252,6 +260,7 @@ def test_arxiv_success():
         title="Attention Is All You Need",
         published="2024-01-01T00:00:00Z",
         author="Ashish Vaswani",
+        summary="This is the paper abstract.",
     )
 
     with patch(
@@ -287,6 +296,7 @@ def test_arxiv_success():
         )
         assert results[0].published_at is not None
         assert results[0].source_id != ""
+        assert results[0].content == "This is the paper abstract."
 
 
 def test_arxiv_missing_fields_handled():
@@ -328,6 +338,7 @@ def test_arxiv_missing_fields_handled():
         assert results[0].published_at is None
         assert results[0].publisher == "arXiv"
         assert results[0].source_type == SourceType.ACADEMIC
+        assert results[0].content is None
 
 
 def test_arxiv_malformed_xml():
@@ -421,4 +432,3 @@ def test_arxiv_http_error():
         assert "Academic search network error" in str(
             exc.value
         )
-

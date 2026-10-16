@@ -2,6 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from app.schemas.research import ResearchMode
 from app.schemas.source import ResearchSource
+from app.schemas.evidence import Evidence  # ADDED
 
 class Claim(BaseModel):
     claim_id: str = Field(..., min_length=1)
@@ -21,5 +22,6 @@ class ResearchReport(BaseModel):
     executive_summary: str = Field(..., min_length=1)
     sections: list[ReportSection] = Field(..., min_length=1)
     claims: list[Claim] = Field(default_factory=list)
+    evidences: list[Evidence] = Field(default_factory=list)  # ADDED
     sources: list[ResearchSource] = Field(default_factory=list)
     generated_at: datetime

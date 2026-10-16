@@ -61,6 +61,9 @@ class ArxivAcademicSearchTool(ResearchTool):
                 
                 published_elem = entry.find('atom:published', namespaces)
                 published = published_elem.text.strip() if published_elem is not None and published_elem.text else None
+
+                summary_elem = entry.find('atom:summary', namespaces)
+                content = summary_elem.text.replace('\n', ' ').strip() if summary_elem is not None and summary_elem.text else None
                 
                 authors = []
                 for author in entry.findall('atom:author', namespaces):
@@ -75,7 +78,8 @@ class ArxivAcademicSearchTool(ResearchTool):
                     source_type=SourceType.ACADEMIC,
                     publisher="arXiv",
                     authors=authors,
-                    published_at=published 
+                    published_at=published,
+                    content=content  # ADDED
                 )
                 sources.append(source)
                 
