@@ -132,3 +132,33 @@ def test_research_service_unit(mock_run_workflow):
     # Linkage verification at service level
     assert len(report.claims) >= 1
     assert report.claims[0].evidence_ids[0] == "ev_mock_1"
+
+
+@patch("app.services.research_service.stream_research_workflow")
+def test_research_stream_endpoint(mock_stream_workflow):
+    """Verifies that the /stream endpoint correctly formats Server-Sent Events (SSE)."""
+    
+    # Mocking the async generator yielded by LangGraph's astream
+    async def mock_stream(*args, **kwargs):
+        yield {"planner": {"plan": "mock_plan"}}
+        yield {"researcher": {"sources": []}}
+        yield {"writer": {"report": get_mock_workflow_state("Test streaming", "quick")["report"]}}
+        
+    mock_stream_workflow.return_value = mock_stream()
+    
+    payload = {
+        "query": "Test streaming",
+        "mode": "quick"
+    }
+    
+    # httpx TestClient requires using 'stream' context manager for streaming responses
+    with client.stream("POST", "/api/v1/research/stream", json=payload) as response:
+        assert response.status_code == 200
+        content = response.read().decode("utf-8")
+        
+        # Verify SSE format and expected real-time states
+        assert "data: " in content
+        assert "running" in content
+        assert "planner" in content
+        assert "completed" in content
+        assert "report_id" in content
