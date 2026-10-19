@@ -1,7 +1,7 @@
 import logging
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 
 from app.core.config import settings
 from app.api.routes.health import router as health_router
@@ -20,10 +20,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configurable CORS with credentials set to False
+# Configurable CORS for Production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.FRONTEND_CORS_ORIGINS,
+    allow_origins=["*"],  # Vercel frontend ko allow karne ke liye
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +43,6 @@ async def root():
     }
 
 if __name__ == "__main__":
-    # Using 127.0.0.1 strictly for local development. 
     uvicorn.run(
         "main:app", 
         host="127.0.0.1", 

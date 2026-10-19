@@ -32,7 +32,8 @@ function App() {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch('/api/v1/research/stream', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_BASE_URL}/api/v1/research/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, mode }),
